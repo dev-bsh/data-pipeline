@@ -27,7 +27,7 @@ def aggregate_unique_users(df: DataFrame) -> DataFrame:
 
     return df_agg_result
 
-def aggregate_avg_purchase_amount(df: DataFrame) -> DataFrame:
+def aggregate_purchase_count(df: DataFrame) -> DataFrame:
     """
     10초 단위 전체(전역) 구매 횟수 및 금액 합계
     """
@@ -38,7 +38,6 @@ def aggregate_avg_purchase_amount(df: DataFrame) -> DataFrame:
     purchase_count = spark_sum(when(col("event_type") == "purchase", 1).otherwise(0)).alias("purchase_count")
 
     df_agg = grouped.agg(total_purchase_amount, purchase_count)
-
     df_agg_result = df_agg.select(
         col("time_window.start").alias("window_start"),
         col("time_window.end").alias("window_end"),
@@ -48,30 +47,11 @@ def aggregate_avg_purchase_amount(df: DataFrame) -> DataFrame:
 
     return df_agg_result
 
-def aggregate_product_views(df: DataFrame) -> DataFrame:
+def aggregate_product_metrics(df: DataFrame) -> DataFrame:
     """
-    10초 단위 '상품별' 조회수 집계
-    """
-    w = anchored_window()
-    grouped = df.groupBy(w, "product_id", "product_name")
-
-    view_count = spark_sum(when(col("event_type") == "view", 1).otherwise(0)).alias("view_count")
-
-    df_agg = grouped.agg(view_count)
-    df_agg_result = df_agg.select(
-        col("time_window.start").alias("window_start"),
-        col("time_window.end").alias("window_end"),
-        "product_id",
-        "product_name",
-        "view_count"
-    )
-
-    return df_agg_result
-
-def aggregate_purchase_conversion(df: DataFrame) -> DataFrame:
-    """
-    10초 단위 '상품별' 구매 전환율
-    conversion_rate = purchase_count / view_count
+    10초 단위 '상품별' 지표:
+      - 조회수
+      - 구매횟수
     """
     w = anchored_window()
     grouped = df.groupBy(w, "product_id", "product_name")
@@ -80,14 +60,12 @@ def aggregate_purchase_conversion(df: DataFrame) -> DataFrame:
     purchase_count = spark_sum(when(col("event_type") == "purchase", 1).otherwise(0)).alias("purchase_count")
 
     df_agg = grouped.agg(view_count, purchase_count)
-    df_agg_result = df_agg.select(
+    df_result = df_agg.select(
         col("time_window.start").alias("window_start"),
         col("time_window.end").alias("window_end"),
         "product_id",
         "product_name",
         "view_count",
         "purchase_count",
-        when(col("view_count") > 0, col("purchase_count") / col("view_count")).otherwise(0).alias("purchase_conversion_rate")
     )
-
-    return df_agg_result
+    return df_result
