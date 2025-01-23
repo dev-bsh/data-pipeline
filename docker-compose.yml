@@ -16,10 +16,26 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://{SERVER_IP}:9093 # client가 외부에 있을 시 kafka 서버 ip 입력
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093
     ports:
       - "9092:9092"
+      - "9093:9093"
+
+  akhq: # kafka-ui
+    image: tchiotludo/akhq
+    container_name: akhq
+    ports:
+      - "8080:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            kafka-cluster:
+              properties:
+                bootstrap.servers: "kafka:9092"
 
   debezium:
     image: debezium/connect:3.0.0.Final
@@ -34,3 +50,62 @@ services:
       STATUS_STORAGE_TOPIC: debezium_status
     ports:
       - "8083:8083"
+  
+  spark-master:
+    image: apache/spark:3.4.4
+    container_name: spark-master
+    environment:
+      SPARK_MASTER_HOST: spark-master
+      SPARK_RPC_AUTHENTICATION_ENABLED: false
+      SPARK_RPC_ENCRYPTION_ENABLED: false
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: false
+    ports:
+      - "18080:8080"
+      - "7077:7077"
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+  
+  spark-worker:
+    image: apache/spark:3.4.4
+    container_name: spark-worker
+    environment:
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 2G # worker 할당 메모리
+      SPARK_WORKER_CORES: 2 # worker 할당 core 개수
+    ports:
+      - "8081:8081"
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    depends_on:
+      - spark-master
+
+  spark-driver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spark-driver
+    depends_on:
+      - spark-master
+      - spark-worker
+      - kafka
+    command: ["python", "app.py"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: false
+      ES_JAVA_OPTS: -Xms512m -Xmx512m # Memory option
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_HOST: elasticsearch:9092
+      SERVER_NAME: kibana
+      SERVER_HOST: 0.0.0.0
+      xpack.security.enabled: false
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
