@@ -1,4 +1,4 @@
-from pyspark.sql.functions import from_json, col
+from pyspark.sql.functions import from_json, col, to_utc_timestamp
 from config.schema import debezium_cdc_schema
 from config.env_config import KAFKA_BROKER, KAFKA_CDC_TOPIC
 
@@ -15,4 +15,4 @@ def parse_kafka_data(df):
             .select(from_json(col("value"), debezium_cdc_schema).alias("data"))
             .select("data.payload.after.*")
             # Spark에서 timestamp를 초 단위로 처리해서 ms단위 변환 진행
-            .withColumn("timestamp", (col("timestamp") / 1000).cast("timestamp"))) 
+            .withColumn("timestamp", to_utc_timestamp((col("timestamp") / 1000).cast("timestamp"), "Asia/Seoul"))) 
