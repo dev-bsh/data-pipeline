@@ -1,0 +1,70 @@
+PUT /unique_users_index
+{
+  "mappings": {
+    "properties": {
+      "window_start": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "window_end": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "unique_users": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+
+PUT /purchase_count_index
+{
+  "mappings": {
+    "properties": {
+      "window_start": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "window_end": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "total_purchase_amount": {
+        "type": "float"
+      },
+      "purchase_count": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+
+PUT /product_metrics_index
+{
+  "mappings": {
+    "properties": {
+      "window_start": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "window_end": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "product_id": {
+        "type": "keyword"
+      },
+      "product_name": {
+        "type": "keyword"
+      },
+      "view_count": {
+        "type": "integer"
+      },
+      "purchase_count": {
+        "type": "integer"
+      }
+    }
+  }
+}
