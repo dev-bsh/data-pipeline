@@ -109,3 +109,13 @@ services:
       - "5601:5601"
     depends_on:
       - elasticsearch
+      
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${ROOT_PASSWORD}
+    ports:
+      - '3306:3306'
